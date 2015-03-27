@@ -17,7 +17,7 @@ Test = subset(stevens, spl == FALSE)
 message("Check record count:")
 nrow(Train) + nrow(Test) - nrow(stevens) == 0
 library(rpart)
-require(rpart.plot) || install.packages("rpart.plot")
+#require(rpart.plot) || install.packages("rpart.plot")
 library(rpart.plot)
 
 #First, create classification tree:
@@ -52,4 +52,74 @@ StevensTree_qq4b = rpart(Reverse ~ Circuit + Issue + Petitioner + Respondent + L
 prp(StevensTree_qq4b)		#higher minbucket ==> fewer splits: 1
 
 #Video 5 RANDOM FORESTS
+#install.packages("randomForest")
+library(randomForest)
 
+StevenForest = randomForest(Reverse ~ Circuit + Issue + Petitioner + Respondent + LowerCourt + Unconst,
+	data = Train, nodesize=25, ntree = 200)
+#	Warning message:
+#	In randomForest.default(m, y, ...) :
+#	  The response has five or fewer unique values.  Are you sure you want to do regression?
+#
+# We want to do classification, so we must first 
+#  convert Reverse to a factor variable to make classification tree
+Train$Reverse = as.factor(Train$Reverse)
+Test$Reverse = as.factor(Test$Reverse)
+StevenForest = randomForest(Reverse ~ Circuit + Issue + Petitioner + Respondent + LowerCourt + Unconst,
+	data = Train, nodesize=25, ntree = 200)
+PredictForest = predict(StevenForest, newdata=Test)
+table(Test$Reverse,PredictForest)
+Accuracy = (38 + 73) / sum(table(Test$Reverse,PredictForest))
+Accuracy
+
+#Quick Question
+set.seed(100)
+StevenForest = randomForest(Reverse ~ Circuit + Issue + Petitioner + Respondent + LowerCourt + Unconst,
+	data = Train, nodesize=25, ntree = 200)
+PredictForest = predict(StevenForest, newdata=Test)
+table(Test$Reverse,PredictForest)
+Accuracy = (38 + 73) / sum(table(Test$Reverse,PredictForest))
+Accuracy
+set.seed(200)
+StevenForest = randomForest(Reverse ~ Circuit + Issue + Petitioner + Respondent + LowerCourt + Unconst,
+	data = Train, nodesize=25, ntree = 200)
+PredictForest = predict(StevenForest, newdata=Test)
+table(Test$Reverse,PredictForest)
+Accuracy = (38 + 73) / sum(table(Test$Reverse,PredictForest))
+Accuracy
+#Independent of set.seed(n), randomForest's randomness is platform-dependent
+
+##Video 6 CROSS-VALIDATION
+#install.packages("caret")
+#install.packages("e1071")
+library(caret)
+library(e1071)
+
+numFolds = trainControl(method="cv", number=10)	#CROSS-VALIDATION, 10 numFolds
+seq(0.01,0.5,0.01)
+cpGrid = expand.grid(.cp=seq(0.01,0.5,0.01))	#range to test
+train(Reverse ~ Circuit + Issue + Petitioner + Respondent + LowerCourt + Unconst,
+	data=Train, method="rpart", 
+	trControl=numFolds, 
+	tuneGrid=cpGrid)
+
+StevensTreeCV = rpart(Reverse ~ Circuit + Issue + Petitioner + Respondent + LowerCourt + Unconst,
+				data=Train, method="class", cp=0.19)
+PredictCV = predict(StevensTreeCV, newdata=Test, type = "class")
+table(Test$Reverse, PredictCV)
+Accuracy = (59+64) / sum(table(Test$Reverse, PredictCV))
+Accuracy	#~0.724, much better than original ~0.65
+
+#Quick Question
+
+prp(StevensTreeCV)	#only one split for Justice Stevens!! Liberal or Conservative decision by the lower court
+
+str(stevens)
+summary(stevens$LowerCourt)
+
+#Lecture Sequence 2 - Keeping an Eye on Healthcare Costs: D2Hawkeye
+
+setwd("/C/Education/edX MIT 15.071 - The Analytics Edge/Unit 04 Data Files")
+getwd()
+
+## Video 
