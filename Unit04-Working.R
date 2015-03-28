@@ -143,3 +143,108 @@ mean(claimsTrain$diabetes)
 
 ## Video 7 BASELINE METHOD AND PENALTY MATRIX
 
+baselineModel = table(claimsTest$bucket2009, claimsTest$bucket2008)		#just make same prediction as prior year
+correct = 0
+for(x in seq(1,5)){
+	correct = correct + baselineModel[x,x]
+}
+Accuracy = correct/sum(baselineModel)
+Accuracy 	#0.68
+# Simple baseline model accuracy is 0.6838135
+#But we want to add a penalty matrix to this, 
+#  since it is worse to predict a low cost bucket but patient is actually high-cost
+
+penaltyMatrix= matrix(c(0,1,2,3,4,
+						2,0,1,2,3,
+						4,2,0,1,2,
+						6,4,2,0,1,
+						8,6,4,2,0), byrow=TRUE, nrow=5)
+penaltyMatrix
+
+baselineModel = as.matrix(table(claimsTest$bucket2009, claimsTest$bucket2008))*penaltyMatrix			#multiply by penalty matrix
+
+penaltyError = sum(baselineModel)/nrow(claimsTest)
+penaltyError #0.74
+
+#So our baseline model had an accuracy of 0.68 and penalty error of 0.74
+#We want to create a CART model with a higher accuracy and a lower penalty error
+
+#qq
+
+# Hypothetical baseline - assume bucket 1 for everybody.
+qAccuracy = length(subset(claimsTest$bucket2009, claimsTest$bucket2009 == 1)) /
+			length(claimsTest$bucket2009)
+qAccuracy	#0.67127
+
+qModel1 = rep(1, length(claimsTest$bucket2009))	#rep(a,b) makes a vector of b instances of value a
+length(qModel1)
+summary(qModel1)
+
+qModelTable = table(claimsTest$bucket2009, qModel1)
+qModelTable
+#another way to compute accuracy 
+qModelTable[1,1]/sum(qModelTable)	#0.67127
+
+penaltyErrorQModel = sum(as.matrix(qModelTable)*penaltyMatrix[,1])/nrow(claimsTest)
+penaltyErrorQModel	# 1.044301
+
+##Video 8 PREDICTING HEALTHCARE COSTS IN R
+
+
+library(rpart)
+library(rpart.plot)
+
+claimsTree = rpart(bucket2009 ~ age + arthritis + alzheimers + cancer + copd + 
+					depression + diabetes + heart.failure + ihd + kidney + osteoporosis
+					+stroke + bucket2008 + reimbursement2008,
+					data=claimsTrain, method="class", cp = 0.00005)
+prp(claimsTree)		#Tree is huge! Why? 5-class rather than binary, lots of variables
+
+predictTest = predict(claimsTree, newdata=claimsTest, type="class")
+treeModel = table(claimsTest$bucket2009, predictTest)
+correct = 0
+for(x in seq(1,5)){
+	correct = correct + treeModel[x,x]
+}
+Accuracy = correct/sum(treeModel)
+Accuracy 	#0.7126669
+
+treeModel = as.matrix(treeModel)*penaltyMatrix
+treeModel
+sum(treeModel)/nrow(claimsTest)	#0.7578902 -- Penalty error
+
+#Accuracy went up, but so did penalty error.
+# This is because high-bucket individuals are few
+# and our model does not take into account the different penalties
+
+#So let's include the different penalties with the 'loss' parameter
+
+claimsTree = rpart(bucket2009 ~ age + arthritis + alzheimers + cancer + copd + 
+					depression + diabetes + heart.failure + ihd + kidney + osteoporosis
+					+stroke + bucket2008 + reimbursement2008,
+					data=claimsTrain, method="class", cp = 0.00005,
+					parms=list(loss=penaltyMatrix))
+
+#With rpart taking into account the weight of different error types, we expect
+#  the accuracy to decrease but the penalty error to decrease also.
+
+prp(claimsTree)	
+predictTest = predict(claimsTree, newdata=claimsTest, type="class")
+treeModel = table(claimsTest$bucket2009, predictTest)
+correct = 0
+for(x in seq(1,5)){
+	correct = correct + treeModel[x,x]
+}
+Accuracy = correct/sum(treeModel)
+Accuracy 	#0.6472746
+
+treeModel = as.matrix(treeModel)*penaltyMatrix
+treeModel
+sum(treeModel)/nrow(claimsTest)	#0.6418161 <-- Penalty error
+
+
+#qq
+p1 = table(claimsTest$bucket2009, predictTest)
+p1[1,1]/sum(p1)
+
+#End of Lecture
