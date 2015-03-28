@@ -122,4 +122,24 @@ summary(stevens$LowerCourt)
 setwd("/C/Education/edX MIT 15.071 - The Analytics Edge/Unit 04 Data Files")
 getwd()
 
-## Video 
+## Video 6 
+
+claims = read.csv("ClaimsData.csv")
+str(claims)	# random sample of 1% of medicare beneficiaries still alive at end of 2008
+			# using 2008 data, predicting 2009 cost bucket
+
+table(claims$bucket2009)/nrow(claims)
+library(caTools)
+set.seed(88)
+spl = sample.split(claims$bucket2009, 0.6)
+claimsTrain = subset(claims, spl == TRUE)
+claimsTest = subset(claims, spl == FALSE)
+message("Row check")
+ifelse( 0 == nrow(claimsTest) + nrow(claimsTrain) - nrow(claims), "OK", "Something went wrong.")
+#qq
+mean(claimsTrain$age)
+str(claimsTrain)
+mean(claimsTrain$diabetes)
+
+## Video 7 BASELINE METHOD AND PENALTY MATRIX
+
