@@ -233,3 +233,71 @@ plot(perfLog)	#much smoother than for CART model
 
 #3.1
 
+set.seed(1)
+trainSmall = Train[sample(nrow(Train), 2000), ]
+set.seed(1)
+forest50k = randomForest(over50k ~ . , data = trainSmall)
+predForest = predict(forest50k, newdata=Test, type="class")
+p = table(Test$over50k, predForest); p
+(p[1,1]+p[2,2])/sum(p)
+
+predForest = predict(forest50k, newdata=Test)
+p = table(Test$over50k, predForest); p
+(p[1,1]+p[2,2])/sum(p)
+
+vu = varUsed(forest50k, count=TRUE)
+vusorted = sort(vu, decreasing = FALSE, index.return = TRUE)
+dotchart(vusorted$x, names(forest50k$forest$xlevels[vusorted$ix]))
+
+varImpPlot(forest50k)
+
+#4.1
+library(caret)
+library(e1071)
+cartGrid = expand.grid( .cp = seq(0.002,0.1,0.002))
+numFolds = trainControl(method="cv", number=10)	#CROSS-VALIDATION, 10 numFolds
+set.seed(2)
+train(over50k ~ ., data=Train, method="rpart",
+	trControl = numFolds, 
+	tuneGrid=cartGrid)
+newCP = 0.002 #recommended by the train() fn
+CART50kNew = rpart(over50k ~ ., data=Train, method="class", cp=newCP)
+prp(CART50kNew)
+
+predCART50kNew = predict(CART50kNew, newdata=Test, type="class")
+t = table(Test$over50k, predCART50kNew); p
+(t[1,1]+t[2,2])/sum(t)		#accuracy  
+
+
+summary(CART50kNew)	#output is MASSIVE
+s = summary(CART50kNew)
+s['cptable']
+as.data.frame(s['cptable'])
+as.data.frame(s['cptable'])$cptable.nsplit
+max(as.data.frame(s['cptable'])$cptable.nsplit)
+numberofsplits = max(as.data.frame(s['cptable'])$cptable.nsplit)	#Booooooooooom
+
+
+#Output of summary is:
+# Call:
+# rpart(formula = over50k ~ ., data = Train, method = "class", 
+#     cp = newCP)
+#   n= 19187 
+
+#             CP nsplit rel error    xerror       xstd
+# 1  0.121832359      0 1.0000000 1.0000000 0.01282467
+# 2  0.065627031      2 0.7563353 0.7680312 0.01164497
+# 3  0.037470219      3 0.6907083 0.7158328 0.01132857
+# 4  0.007580680      4 0.6532380 0.6545376 0.01092878
+# 5  0.005956249      8 0.6229153 0.6413255 0.01083831
+# 6  0.004331817     10 0.6110028 0.6255144 0.01072792
+# 7  0.004223522     11 0.6066710 0.6164176 0.01066334
+# 8  0.003465454     13 0.5982240 0.6086203 0.01060735
+# 9  0.003248863     16 0.5869612 0.6053715 0.01058384
+# 10 0.002165909     17 0.5837124 0.6012562 0.01055392
+# 11 0.002000000     18 0.5815465 0.6001733 0.01054602
+#
+#
+# [... truncated, there was lots more]
+#but nsplit tells the story without having to resort to that. See above for how to get straight to answer
+
