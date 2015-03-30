@@ -97,3 +97,74 @@ summary(LogModel2)
 p2 = predict(LogModel2, newdata=Possibilities, type="response")
 as.numeric(abs(ControlWomen - p2[4])) # 2.207523e-07 == > 0.00000
 
+## Part 2: LETTER RECOGNITION
+
+setwd("c:/C/Education/edX MIT 15.071 - The Analytics Edge/Unit 04 Data Files")
+getwd()
+
+letters = read.csv("letters_ABPR.csv")
+
+library(caTools)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
+letters$isB = as.factor(letters$letter == "B")
+set.seed(1000)
+
+spl = sample.split(letters$isB, SplitRatio = 0.5)
+Train = subset(letters, spl == TRUE) #Remember that TRUE values from sample.split should go in the training set.
+Test = subset(letters, spl == FALSE)
+
+#Baseline model: Assume NOT-B. Computer accuracy of this baseline on Test set
+predBase = rep(FALSE, nrow(Test))
+summary(predBase)	#OK
+
+p = table(Test$isB, predBase); p
+p[1,1]/sum(p)
+
+CARTb = rpart(isB ~ . - letter, data=Train, method="class")
+prp(CARTb)
+
+predCARTb = predict(CARTb, newdata=Test, type="class")
+p = table(Test$isB, predCARTb); p
+(p[1,1]+p[2,2])/sum(p)
+
+set.seed(1000)
+bForest = randomForest(isB ~ . - letter, data = Train)
+predForest = predict(bForest, newdata=Test, type="class")
+p = table(Test$isB, predForest); p
+(p[1,1]+p[2,2])/sum(p)
+
+#2.1
+
+letters$letter = as.factor(letters$letter)
+set.seed(2000)
+spl = sample.split(letters$letter, SplitRatio = 0.5)
+Train = subset(letters, spl == TRUE) #Remember that TRUE values from sample.split should go in the training set.
+Test = subset(letters, spl == FALSE)
+
+summary(letters$letter)	#Shows P is the most common outcome
+predBase = rep("P", nrow(Test))
+summary(predBase)	#OK
+p = table(Test$letter, predBase); p
+p['P','P']/sum(p)	#baseline accuracy 0.2573813
+
+CARTletter = rpart(letter ~ . - isB, data=Train, method="class")
+prp(CARTletter)
+predCARTletter = predict(CARTletter, newdata=Test, type="class")
+p = table(Test$letter, predCARTletter); p
+sum(p['A','A'],p['B','B'],p['P','P'],p['R','R'])/sum(p)
+
+set.seed(1000)
+letterForest = randomForest(letter ~ . - isB, data = Train)
+predForest = predict(letterForest, newdata=Test, type="class")
+p = table(Test$letter, predForest); p
+sum(p['A','A'],p['B','B'],p['P','P'],p['R','R'])/sum(p)
+
+
+## Part 3: PREDICTING EARNINGS FROM CENSUS DATA
+
+setwd("c:/C/Education/edX MIT 15.071 - The Analytics Edge/Unit 04 Data Files")
+getwd()
+
