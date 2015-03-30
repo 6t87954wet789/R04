@@ -165,6 +165,71 @@ sum(p['A','A'],p['B','B'],p['P','P'],p['R','R'])/sum(p)
 
 ## Part 3: PREDICTING EARNINGS FROM CENSUS DATA
 
+library(caTools)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+
 setwd("c:/C/Education/edX MIT 15.071 - The Analytics Edge/Unit 04 Data Files")
 getwd()
+
+census = read.csv('census.csv')
+str(census)
+summary(census)
+
+set.seed(2000)
+
+spl = sample.split(census$over50k, SplitRatio = 0.6)
+Train = subset(census, spl == TRUE)	# should be 60%
+Test = subset(census, spl == FALSE)
+nrow(Train)/nrow(census) #should be 60%
+nrow(Test)/nrow(census) #should be 40%
+
+Log50k = glm(over50k ~ ., data=Train, family="binomial")
+# "You might see a warning message here - you can ignore it and proceed."
+summary(Log50k)
+
+predictTest = predict(Log50k, newdata=Test, type="response")
+t = table(Test$over50k, predictTest > 0.5)	; t
+(t[1,1]+t[2,2])/sum(t)		#accuracy 0.8552107
+
+summary(Train$over50k)		#Shows FALSE is the most common outcome
+#Baseline is just predict NOT-over50k
+predBase = rep(FALSE, nrow(Test))
+summary(predBase)	#OK
+p = table(Test$over50k, predBase); p
+p[1,1]/sum(p)	#baseline accuracy 0.7593621
+
+library(ROCR)
+ROCRpred = prediction(predictTest, Test$over50k)
+auc = as.numeric(performance(ROCRpred, "auc")@y.values)
+accuracy # 0.9061598
+
+#2.1
+CART50k = rpart(over50k ~ ., data=Train, method="class")
+prp(CART50k)
+
+predCART50k = predict(CART50k, newdata=Test, type="class")
+t = table(Test$over50k, predCART50k); p
+(t[1,1]+t[2,2])/sum(t)		#accuracy  0.8473927
+
+#ROC for CART model:
+PredictROC = predict(CART50k, newdata=Test)	
+PredictROC		#gives probability of each outcome for each record in Test
+pred = prediction(PredictROC[,2], Test$over50k)	#2nd col of PredictROC is predicted odds of over50k
+perf = performance(pred, "tpr","fpr")
+auc = as.numeric(performance(pred, "auc")@y.values)
+auc 	# 0.8470256
+plot(perf)
+
+
+#ROC for logistic model:
+predictTest = predict(Log50k, newdata=Test, type="response")
+predLog = prediction(predictTest, Test$over50k)
+perfLog = performance(predLog, "tpr","fpr")
+aucLog = as.numeric(performance(predLog, "auc")@y.values)
+aucLog 	# 0.9061598		higher auc than CART model
+plot(perfLog)	#much smoother than for CART model
+
+#3.1
 
